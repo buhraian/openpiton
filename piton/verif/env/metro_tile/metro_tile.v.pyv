@@ -52,7 +52,10 @@ import "DPI-C" function int getSize();
 import "DPI-C" function void mpi_send_yummy(input byte unsigned message, input int dest, input int rank, input int flag);
 import "DPI-C" function byte unsigned mpi_receive_yummy(input int origin, input int flag);
 
-import "DPI-C" function longint unsigned mpi_receive_data(input int origin, output byte unsigned valid, input int flag);
+import "DPI-C" function void mpi_send_valid(input byte unsigned message, input int dest, input int rank, input int flag);
+import "DPI-C" function byte unsigned mpi_receive_valid(input int origin, input int flag);
+
+import "DPI-C" function longint unsigned mpi_receive_data(input int origin, input int flag);
 import "DPI-C" function void mpi_send_data(input longint unsigned data, input byte unsigned valid, input int dest, input int rank, input int flag);
 
 import "DPI-C" function void barrier();
@@ -363,6 +366,9 @@ int YUMMY_NOC_2 ;
 int DATA_NOC_2  ;
 int YUMMY_NOC_3 ;
 int DATA_NOC_3  ;
+int VALID_NOC_1 ;
+int VALID_NOC_2 ;
+int VALID_NOC_3 ;
 
 `ifndef VERILATOR
 initial
@@ -375,6 +381,9 @@ begin
     DATA_NOC_2  = 3;
     YUMMY_NOC_3 = 4;
     DATA_NOC_3  = 5;
+    VALID_NOC_1 = 6;
+    VALID_NOC_2 = 7;
+    VALID_NOC_3 = 8;
 
     //metro initialization
     initialize();
@@ -634,34 +643,37 @@ begin
     if(rankN != -1) begin
         //SENDING
         //$display("sending N");
+        mpi_send_valid(out_N_noc1_valid, rankN, rank, VALID_NOC_1);
         mpi_send_data(out_N_noc1_data, out_N_noc1_valid, rankN, rank, DATA_NOC_1);
         // send yummy
         mpi_send_yummy(out_N_noc1_yummy, rankN, rank, YUMMY_NOC_1);
 
         // send data
+        mpi_send_valid(out_N_noc2_valid, rankN, rank, VALID_NOC_2);
         mpi_send_data(out_N_noc2_data, out_N_noc2_valid, rankN, rank, DATA_NOC_2);
         // send yummy
         mpi_send_yummy(out_N_noc2_yummy, rankN, rank, YUMMY_NOC_2);
 
         // send data
+        mpi_send_valid(out_N_noc3_valid, rankN, rank, VALID_NOC_3);
         mpi_send_data(out_N_noc3_data, out_N_noc3_valid, rankN, rank, DATA_NOC_3);
         // send yummy
         mpi_send_yummy(out_N_noc3_yummy, rankN, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving N");
-        in_N_noc1_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_1);
-        in_N_noc1_valid = valid_aux;
+        in_N_noc1_valid = mpi_receive_valid(rankN, VALID_NOC_1);
+        in_N_noc1_data = mpi_receive_data(rankN, DATA_NOC_1);
         // receive yummy
         in_N_noc1_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_1);
         
-        in_N_noc2_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_2);
-        in_N_noc2_valid = valid_aux;
+        in_N_noc2_valid = mpi_receive_valid(rankN, VALID_NOC_2);
+        in_N_noc2_data = mpi_receive_data(rankN, DATA_NOC_2);
         // receive yummy
         in_N_noc2_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_2);
 
-        in_N_noc3_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_3);
-        in_N_noc3_valid = valid_aux;
+        in_N_noc3_valid = mpi_receive_valid(rankN, VALID_NOC_3);
+        in_N_noc3_data = mpi_receive_data(rankN, DATA_NOC_3);
         // receive yummy
         in_N_noc3_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_3);
     end
@@ -669,34 +681,37 @@ begin
     if(rankE != -1) begin
         //SENDING
         //$display("sending E");
+        mpi_send_valid(out_E_noc1_valid, rankE, rank, VALID_NOC_1);
         mpi_send_data(out_E_noc1_data, out_E_noc1_valid, rankE, rank, DATA_NOC_1);
         // send yummy
         mpi_send_yummy(out_E_noc1_yummy, rankE, rank, YUMMY_NOC_1);
 
         // send data
+        mpi_send_valid(out_E_noc2_valid, rankE, rank, VALID_NOC_2);
         mpi_send_data(out_E_noc2_data, out_E_noc2_valid, rankE, rank, DATA_NOC_2);
         // send yummy
         mpi_send_yummy(out_E_noc2_yummy, rankE, rank, YUMMY_NOC_2);
 
         // send data
+        mpi_send_valid(out_E_noc3_valid, rankE, rank, VALID_NOC_3);
         mpi_send_data(out_E_noc3_data, out_E_noc3_valid, rankE, rank, DATA_NOC_3);
         // send yummy
         mpi_send_yummy(out_E_noc3_yummy, rankE, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving E");
-        in_E_noc1_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_1);
-        in_E_noc1_valid = valid_aux;
+        in_E_noc1_valid = mpi_receive_valid(rankE, VALID_NOC_1);
+        in_E_noc1_data = mpi_receive_data(rankE, DATA_NOC_1);
         // receive yummy
         in_E_noc1_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_1);
         
-        in_E_noc2_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_2);
-        in_E_noc2_valid = valid_aux;
+        in_E_noc2_valid = mpi_receive_valid(rankE, VALID_NOC_2);
+        in_E_noc2_data = mpi_receive_data(rankE, DATA_NOC_2);
         // receive yummy
         in_E_noc2_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_2);
 
-        in_E_noc3_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_3);
-        in_E_noc3_valid = valid_aux;
+        in_E_noc3_valid = mpi_receive_valid(rankE, VALID_NOC_3);
+        in_E_noc3_data = mpi_receive_data(rankE, DATA_NOC_3);
         // receive yummy
         in_E_noc3_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_3);
     end
@@ -704,34 +719,37 @@ begin
     if(rankS != -1) begin
         //SENDING
         //$display("sending S");
+        mpi_send_valid(out_S_noc1_valid, rankS, rank, VALID_NOC_1);
         mpi_send_data(out_S_noc1_data, out_S_noc1_valid, rankS, rank, DATA_NOC_1);
         // send yummy
         mpi_send_yummy(out_S_noc1_yummy, rankS, rank, YUMMY_NOC_1);
 
         // send data
+        mpi_send_valid(out_S_noc2_valid, rankS, rank, VALID_NOC_2);
         mpi_send_data(out_S_noc2_data, out_S_noc2_valid, rankS, rank, DATA_NOC_2);
         // send yummy
         mpi_send_yummy(out_S_noc2_yummy, rankS, rank, YUMMY_NOC_2);
 
         // send data
+        mpi_send_valid(out_S_noc3_valid, rankS, rank, VALID_NOC_3);
         mpi_send_data(out_S_noc3_data, out_S_noc3_valid, rankS, rank, DATA_NOC_3);
         // send yummy
         mpi_send_yummy(out_S_noc3_yummy, rankS, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving S");
-        in_S_noc1_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_1);
-        in_S_noc1_valid = valid_aux;
+        in_S_noc1_data = mpi_receive_data(rankS, DATA_NOC_1);
+        in_S_noc1_valid = mpi_receive_valid(rankS, VALID_NOC_1);
         // receive yummy
         in_S_noc1_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_1);
         
-        in_S_noc2_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_2);
-        in_S_noc2_valid = valid_aux;
+        in_S_noc2_data = mpi_receive_data(rankS, DATA_NOC_2);
+        in_S_noc2_valid = mpi_receive_valid(rankS, VALID_NOC_2);
         // receive yummy
         in_S_noc2_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_2);
 
-        in_S_noc3_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_3);
-        in_S_noc3_valid = valid_aux;
+        in_S_noc3_data = mpi_receive_data(rankS, DATA_NOC_3);
+        in_S_noc3_valid = mpi_receive_valid(rankS, VALID_NOC_3);
         // receive yummy
         in_S_noc3_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_3);
     end
@@ -739,34 +757,37 @@ begin
     if(rankW != -1) begin
         //SENDING
         //$display("sending W");
+        mpi_send_valid(out_W_noc1_valid, rankW, rank, VALID_NOC_1);
         mpi_send_data(out_W_noc1_data, out_W_noc1_valid, rankW, rank, DATA_NOC_1);
         // send yummy
         mpi_send_yummy(out_W_noc1_yummy, rankW, rank, YUMMY_NOC_1);
 
         // send data
+        mpi_send_valid(out_W_noc2_valid, rankW, rank, VALID_NOC_2);
         mpi_send_data(out_W_noc2_data, out_W_noc2_valid, rankW, rank, DATA_NOC_2);
         // send yummy
         mpi_send_yummy(out_W_noc2_yummy, rankW, rank, YUMMY_NOC_2);
 
         // send data
+        mpi_send_valid(out_W_noc3_valid, rankW, rank, VALID_NOC_3);
         mpi_send_data(out_W_noc3_data, out_W_noc3_valid, rankW, rank, DATA_NOC_3);
         // send yummy
         mpi_send_yummy(out_W_noc3_yummy, rankW, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving W");
-        in_W_noc1_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_1);
-        in_W_noc1_valid = valid_aux;
+        in_W_noc1_data = mpi_receive_data(rankW, DATA_NOC_1);
+        in_W_noc1_valid = mpi_receive_valid(rankW, VALID_NOC_1);
         // receive yummy
         in_W_noc1_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_1);
         
-        in_W_noc2_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_2);
-        in_W_noc2_valid = valid_aux;
+        in_W_noc2_data = mpi_receive_data(rankW, DATA_NOC_2);
+        in_W_noc2_valid = mpi_receive_valid(rankW, VALID_NOC_2);
         // receive yummy
         in_W_noc2_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_2);
 
-        in_W_noc3_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_3);
-        in_W_noc3_valid = valid_aux;
+        in_W_noc3_data = mpi_receive_data(rankW, DATA_NOC_3);
+        in_W_noc3_valid = mpi_receive_valid(rankW, VALID_NOC_3);
         // receive yummy
         in_W_noc3_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_3);
     end
