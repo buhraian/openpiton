@@ -48,14 +48,35 @@ import "DPI-C" function void initialize();
 import "DPI-C" function void finalize();
 import "DPI-C" function int getRank();
 import "DPI-C" function int getSize();
-
-import "DPI-C" function void mpi_send_yummy(input byte unsigned message, input int dest, input int rank, input int flag);
-import "DPI-C" function byte unsigned mpi_receive_yummy(input int origin, input int flag);
-
-import "DPI-C" function longint unsigned mpi_receive_data(input int origin, output byte unsigned valid, input int flag);
-import "DPI-C" function void mpi_send_data(input longint unsigned data, input byte unsigned valid, input int dest, input int rank, input int flag);
-
 import "DPI-C" function void barrier();
+
+import "DPI-C" function byte unsigned mpi_receive_finish();
+import "DPI-C" function void mpi_send_finish(input byte unsigned message, input int rank);
+import "DPI-C" function byte unsigned mpi_receive_yummy(input int origin, input int flag);
+import "DPI-C" function void mpi_send_yummy(input byte unsigned message, input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_send_data(input longint unsigned data, input byte unsigned valid, input int dest, input int rank, input int flag);
+import "DPI-C" function longint unsigned mpi_receive_data(input int origin, output byte unsigned valid, input int flag);
+import "DPI-C" function void mpi_send_all_noc(input longint unsigned data_0, input byte unsigned valid_0, 
+                                              input longint unsigned data_1, input byte unsigned valid_1, 
+                                              input longint unsigned data_2, input byte unsigned valid_2, 
+                                              input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all_noc(output longint unsigned data_0, output byte unsigned valid_0, 
+                                                 output longint unsigned data_1, output byte unsigned valid_1, 
+                                                 output longint unsigned data_2, output byte unsigned valid_2,
+                                                 input int origin, input int flag);
+import "DPI-C" function void mpi_send_all_yummy(input byte unsigned yummy_0, input byte unsigned yummy_1, input byte unsigned yummy_2, 
+                                                input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all_yummy(output byte unsigned yummy_0, output byte unsigned yummy_1, output byte unsigned yummy_2, 
+                                                   input int origin, input int flag);
+import "DPI-C" function void mpi_send_all(input longint unsigned data_0, input byte unsigned valid_0, input byte unsigned yummy_0,
+                                          input longint unsigned data_1, input byte unsigned valid_1, input byte unsigned yummy_1,
+                                          input longint unsigned data_2, input byte unsigned valid_2, input byte unsigned yummy_2,
+                                          input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all(output longint unsigned data_0, output byte unsigned valid_0, output byte unsigned yummy_0,
+                                             output longint unsigned data_1, output byte unsigned valid_1, output byte unsigned yummy_1,
+                                             output longint unsigned data_2, output byte unsigned valid_2, output byte unsigned yummy_2,
+                                             input int origin, input int flag);
+
 //add metro_stuff
 `endif // ifndef VERILATOR
 `endif // ifdef PITON_DPI
@@ -181,6 +202,8 @@ reg [4:0]                       pll_rangea;
 wire                            pll_lock = 1'b1;
 reg [1:0]                       clk_mux_sel;
 reg                             async_mux;
+wire                            good_end;
+wire                            bad_end;
 // For simulation only, monitor stuff.  Only cross-module referenced
 // do not delete.
 reg                             diag_done;
@@ -344,10 +367,27 @@ always #25000 spi_sys_clk = ~spi_sys_clk;                       // 20MHz
 // SIMULATED BOOT SEQUENCE
 ////////////////////////////////////////////////////////
 
-int           rank; 
-int           size; 
-int           dest;
-byte unsigned valid_aux;
+int                 rank; 
+int                 size; 
+int                 dest;
+int                 checkTestEnd;
+byte    unsigned    valid_aux_0, valid_aux_1, valid_aux_2;
+longint unsigned    data_aux_0, data_aux_1, data_aux_2;
+byte    unsigned    yummy_aux_0, yummy_aux_1, yummy_aux_2;
+byte                test_end;
+
+reg test_exit;
+
+int YUMMY_NOC_1  ;
+int DATA_NOC_1   ;
+int YUMMY_NOC_2  ;
+int DATA_NOC_2   ;
+int YUMMY_NOC_3  ;
+int DATA_NOC_3   ;
+int TEST_FINISH  ;
+int DATA_ALL_NOC ;
+int ALL_YUMMY    ;
+int ALL_NOC      ;
 
 int           tile_x; 
 int           tile_y;
@@ -357,28 +397,27 @@ int           rankS;
 int           rankW;
 
 
-int YUMMY_NOC_1 ;
-int DATA_NOC_1  ;
-int YUMMY_NOC_2 ;
-int DATA_NOC_2  ;
-int YUMMY_NOC_3 ;
-int DATA_NOC_3  ;
-
 `ifndef VERILATOR
 initial
 begin
     string filerank;
 
-    YUMMY_NOC_1 = 0;
-    DATA_NOC_1  = 1;
-    YUMMY_NOC_2 = 2;
-    DATA_NOC_2  = 3;
-    YUMMY_NOC_3 = 4;
-    DATA_NOC_3  = 5;
+    YUMMY_NOC_1  = 0;
+    DATA_NOC_1   = 1;
+    YUMMY_NOC_2  = 2;
+    DATA_NOC_2   = 3;
+    YUMMY_NOC_3  = 4;
+    DATA_NOC_3   = 5;
+    TEST_FINISH  = 6;
+    DATA_ALL_NOC = 7;
+    ALL_YUMMY    = 8;
+    ALL_NOC      = 9;
+
+    test_end = 0;
 
     //metro initialization
     initialize();
-    //barrier();
+    barrier();
     rank = getRank();
     size = getSize();
     filerank.itoa(rank);
@@ -624,45 +663,42 @@ $display("rankS: %d",rankS);
 $display("rankW: %d",rankW);
 $display("rankE: %d",rankE);
 
+
+test_exit = 0;
+checkTestEnd = 50000;
+
 @(posedge core_ref_clk);
-for(int i = 0; i < 350000; i = i + 1)
+while(!test_exit)
 begin
-    if (i % 10000 == 0) begin
-        $display("TIME: %d", i);
-    end
     #500;
+    test_end = test_end || (good_end==1 || bad_end==1);
+`ifdef MPI_OPT_0
     if(rankN != -1) begin
         //SENDING
         //$display("sending N");
         mpi_send_data(out_N_noc1_data, out_N_noc1_valid, rankN, rank, DATA_NOC_1);
-        // send yummy
         mpi_send_yummy(out_N_noc1_yummy, rankN, rank, YUMMY_NOC_1);
 
         // send data
         mpi_send_data(out_N_noc2_data, out_N_noc2_valid, rankN, rank, DATA_NOC_2);
-        // send yummy
         mpi_send_yummy(out_N_noc2_yummy, rankN, rank, YUMMY_NOC_2);
 
         // send data
         mpi_send_data(out_N_noc3_data, out_N_noc3_valid, rankN, rank, DATA_NOC_3);
-        // send yummy
         mpi_send_yummy(out_N_noc3_yummy, rankN, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving N");
-        in_N_noc1_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_1);
-        in_N_noc1_valid = valid_aux;
-        // receive yummy
+        in_N_noc1_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_1);
+        in_N_noc1_valid = valid_aux_0;
         in_N_noc1_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_1);
         
-        in_N_noc2_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_2);
-        in_N_noc2_valid = valid_aux;
-        // receive yummy
+        in_N_noc2_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_2);
+        in_N_noc2_valid = valid_aux_0;
         in_N_noc2_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_2);
 
-        in_N_noc3_data = mpi_receive_data(rankN, valid_aux, DATA_NOC_3);
-        in_N_noc3_valid = valid_aux;
-        // receive yummy
+        in_N_noc3_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_3);
+        in_N_noc3_valid = valid_aux_0;
         in_N_noc3_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_3);
     end
 
@@ -685,18 +721,18 @@ begin
 
         // RECEIVING
         //$display("receiving E");
-        in_E_noc1_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_1);
-        in_E_noc1_valid = valid_aux;
+        in_E_noc1_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_1);
+        in_E_noc1_valid = valid_aux_0;
         // receive yummy
         in_E_noc1_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_1);
         
-        in_E_noc2_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_2);
-        in_E_noc2_valid = valid_aux;
+        in_E_noc2_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_2);
+        in_E_noc2_valid = valid_aux_0;
         // receive yummy
         in_E_noc2_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_2);
 
-        in_E_noc3_data = mpi_receive_data(rankE, valid_aux, DATA_NOC_3);
-        in_E_noc3_valid = valid_aux;
+        in_E_noc3_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_3);
+        in_E_noc3_valid = valid_aux_0;
         // receive yummy
         in_E_noc3_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_3);
     end
@@ -720,18 +756,18 @@ begin
 
         // RECEIVING
         //$display("receiving S");
-        in_S_noc1_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_1);
-        in_S_noc1_valid = valid_aux;
+        in_S_noc1_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_1);
+        in_S_noc1_valid = valid_aux_0;
         // receive yummy
         in_S_noc1_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_1);
         
-        in_S_noc2_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_2);
-        in_S_noc2_valid = valid_aux;
+        in_S_noc2_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_2);
+        in_S_noc2_valid = valid_aux_0;
         // receive yummy
         in_S_noc2_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_2);
 
-        in_S_noc3_data = mpi_receive_data(rankS, valid_aux, DATA_NOC_3);
-        in_S_noc3_valid = valid_aux;
+        in_S_noc3_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_3);
+        in_S_noc3_valid = valid_aux_0;
         // receive yummy
         in_S_noc3_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_3);
     end
@@ -740,37 +776,541 @@ begin
         //SENDING
         //$display("sending W");
         mpi_send_data(out_W_noc1_data, out_W_noc1_valid, rankW, rank, DATA_NOC_1);
-        // send yummy
         mpi_send_yummy(out_W_noc1_yummy, rankW, rank, YUMMY_NOC_1);
 
         // send data
         mpi_send_data(out_W_noc2_data, out_W_noc2_valid, rankW, rank, DATA_NOC_2);
-        // send yummy
         mpi_send_yummy(out_W_noc2_yummy, rankW, rank, YUMMY_NOC_2);
 
         // send data
         mpi_send_data(out_W_noc3_data, out_W_noc3_valid, rankW, rank, DATA_NOC_3);
-        // send yummy
         mpi_send_yummy(out_W_noc3_yummy, rankW, rank, YUMMY_NOC_3);
 
         // RECEIVING
         //$display("receiving W");
-        in_W_noc1_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_1);
-        in_W_noc1_valid = valid_aux;
+        in_W_noc1_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_1);
+        in_W_noc1_valid = valid_aux_0;
         // receive yummy
         in_W_noc1_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_1);
         
-        in_W_noc2_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_2);
-        in_W_noc2_valid = valid_aux;
+        in_W_noc2_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_2);
+        in_W_noc2_valid = valid_aux_0;
         // receive yummy
         in_W_noc2_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_2);
 
-        in_W_noc3_data = mpi_receive_data(rankW, valid_aux, DATA_NOC_3);
-        in_W_noc3_valid = valid_aux;
+        in_W_noc3_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_3);
+        in_W_noc3_valid = valid_aux_0;
         // receive yummy
         in_W_noc3_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_3);
     end
+`endif //MPI_OPT_0
+
+`ifdef MPI_OPT_1
+    if(rankN != -1) begin
+        //SENDING
+        mpi_send_all_noc(out_N_noc1_data, out_N_noc1_valid,
+                         out_N_noc2_data, out_N_noc2_valid,
+                         out_N_noc3_data, out_N_noc3_valid,
+                         rankN, rank, DATA_ALL_NOC);
+
+        mpi_send_yummy(out_N_noc1_yummy, rankN, rank, YUMMY_NOC_1);
+        mpi_send_yummy(out_N_noc2_yummy, rankN, rank, YUMMY_NOC_2);
+        mpi_send_yummy(out_N_noc3_yummy, rankN, rank, YUMMY_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankN, DATA_ALL_NOC);
+
+        in_N_noc1_data  = data_aux_0;
+        in_N_noc1_valid = valid_aux_0;
+        in_N_noc2_data  = data_aux_1;
+        in_N_noc2_valid = valid_aux_1;
+        in_N_noc3_data  = data_aux_2;
+        in_N_noc3_valid = valid_aux_2;
+
+        in_N_noc1_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_1);
+        in_N_noc2_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_2);
+        in_N_noc3_yummy = mpi_receive_yummy(rankN, YUMMY_NOC_3);
+    end
+
+    if(rankE != -1) begin
+        //SENDING
+        mpi_send_all_noc(out_E_noc1_data, out_E_noc1_valid,
+                         out_E_noc2_data, out_E_noc2_valid,
+                         out_E_noc3_data, out_E_noc3_valid,
+                         rankE, rank, DATA_ALL_NOC);
+
+        mpi_send_yummy(out_E_noc1_yummy, rankE, rank, YUMMY_NOC_1);
+        mpi_send_yummy(out_E_noc2_yummy, rankE, rank, YUMMY_NOC_2);
+        mpi_send_yummy(out_E_noc3_yummy, rankE, rank, YUMMY_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankE, DATA_ALL_NOC);
+
+        in_E_noc1_data  = data_aux_0;
+        in_E_noc1_valid = valid_aux_0;
+        in_E_noc2_data  = data_aux_1;
+        in_E_noc2_valid = valid_aux_1;
+        in_E_noc3_data  = data_aux_2;
+        in_E_noc3_valid = valid_aux_2;
+
+        in_E_noc1_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_1);
+        in_E_noc2_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_2);
+        in_E_noc3_yummy = mpi_receive_yummy(rankE, YUMMY_NOC_3);
+        
+    end
+
+    if(rankS != -1) begin
+        //SENDING
+        mpi_send_all_noc(out_S_noc1_data, out_S_noc1_valid,
+                         out_S_noc2_data, out_S_noc2_valid,
+                         out_S_noc3_data, out_S_noc3_valid,
+                         rankS, rank, DATA_ALL_NOC);
+
+        mpi_send_yummy(out_S_noc1_yummy, rankS, rank, YUMMY_NOC_1);
+        mpi_send_yummy(out_S_noc2_yummy, rankS, rank, YUMMY_NOC_2);
+        mpi_send_yummy(out_S_noc3_yummy, rankS, rank, YUMMY_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankS, DATA_ALL_NOC);
+
+        in_S_noc1_data  = data_aux_0;
+        in_S_noc1_valid = valid_aux_0;
+        in_S_noc2_data  = data_aux_1;
+        in_S_noc2_valid = valid_aux_1;
+        in_S_noc3_data  = data_aux_2;
+        in_S_noc3_valid = valid_aux_2;
+
+        in_S_noc1_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_1);
+        in_S_noc2_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_2);
+        in_S_noc3_yummy = mpi_receive_yummy(rankS, YUMMY_NOC_3);
+        
+    end
+
+    if(rankW != -1) begin
+        //SENDING
+        mpi_send_all_noc(out_W_noc1_data, out_W_noc1_valid,
+                         out_W_noc2_data, out_W_noc2_valid,
+                         out_W_noc3_data, out_W_noc3_valid,
+                         rankW, rank, DATA_ALL_NOC);
+
+        mpi_send_yummy(out_W_noc1_yummy, rankW, rank, YUMMY_NOC_1);
+        mpi_send_yummy(out_W_noc2_yummy, rankW, rank, YUMMY_NOC_2);
+        mpi_send_yummy(out_W_noc3_yummy, rankW, rank, YUMMY_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankW, DATA_ALL_NOC);
+
+        in_W_noc1_data  = data_aux_0;
+        in_W_noc1_valid = valid_aux_0;
+        in_W_noc2_data  = data_aux_1;
+        in_W_noc2_valid = valid_aux_1;
+        in_W_noc3_data  = data_aux_2;
+        in_W_noc3_valid = valid_aux_2;
+
+        in_W_noc1_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_1);
+        in_W_noc2_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_2);
+        in_W_noc3_yummy = mpi_receive_yummy(rankW, YUMMY_NOC_3);
+        
+    end
+`endif //MPI_OPT_1
+
+`ifdef MPI_OPT_2
+    if(rankN != -1) begin
+        // SENDING
+        mpi_send_all_yummy(out_N_noc1_yummy, 
+                           out_N_noc2_yummy, 
+                           out_N_noc3_yummy, 
+                           rankN, rank, ALL_YUMMY);
+        
+        mpi_send_data(out_N_noc1_data, out_N_noc1_valid, rankN, rank, DATA_NOC_1);
+        mpi_send_data(out_N_noc2_data, out_N_noc2_valid, rankN, rank, DATA_NOC_2);
+        mpi_send_data(out_N_noc3_data, out_N_noc3_valid, rankN, rank, DATA_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankN, ALL_YUMMY);
+
+        in_N_noc1_yummy = yummy_aux_0;
+        in_N_noc2_yummy = yummy_aux_1;
+        in_N_noc3_yummy = yummy_aux_2;
+
+        // receive data
+        in_N_noc1_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_1);
+        in_N_noc1_valid = valid_aux_0;    
+        
+        in_N_noc2_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_2);
+        in_N_noc2_valid = valid_aux_0;
+
+        in_N_noc3_data = mpi_receive_data(rankN, valid_aux_0, DATA_NOC_3);
+        in_N_noc3_valid = valid_aux_0;
+        
+    end
+
+    if(rankE != -1) begin
+        // SENDING
+        mpi_send_all_yummy(out_E_noc1_yummy, 
+                           out_E_noc2_yummy, 
+                           out_E_noc3_yummy, 
+                           rankE, rank, ALL_YUMMY);
+        
+        mpi_send_data(out_E_noc1_data, out_E_noc1_valid, rankE, rank, DATA_NOC_1);
+        mpi_send_data(out_E_noc2_data, out_E_noc2_valid, rankE, rank, DATA_NOC_2);
+        mpi_send_data(out_E_noc3_data, out_E_noc3_valid, rankE, rank, DATA_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankE, ALL_YUMMY);
+
+        in_E_noc1_yummy = yummy_aux_0;
+        in_E_noc2_yummy = yummy_aux_1;
+        in_E_noc3_yummy = yummy_aux_2;
+
+        // receive data
+        in_E_noc1_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_1);
+        in_E_noc1_valid = valid_aux_0;    
+        
+        in_E_noc2_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_2);
+        in_E_noc2_valid = valid_aux_0;
+
+        in_E_noc3_data = mpi_receive_data(rankE, valid_aux_0, DATA_NOC_3);
+        in_E_noc3_valid = valid_aux_0;
+        
+        
+    end
+
+    if(rankS != -1) begin
+        // SENDING
+        mpi_send_all_yummy(out_S_noc1_yummy, 
+                           out_S_noc2_yummy, 
+                           out_S_noc3_yummy, 
+                           rankS, rank, ALL_YUMMY);
+        
+        mpi_send_data(out_S_noc1_data, out_S_noc1_valid, rankS, rank, DATA_NOC_1);
+        mpi_send_data(out_S_noc2_data, out_S_noc2_valid, rankS, rank, DATA_NOC_2);
+        mpi_send_data(out_S_noc3_data, out_S_noc3_valid, rankS, rank, DATA_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankS, ALL_YUMMY);
+
+        in_S_noc1_yummy = yummy_aux_0;
+        in_S_noc2_yummy = yummy_aux_1;
+        in_S_noc3_yummy = yummy_aux_2;
+
+        // receive data
+        in_S_noc1_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_1);
+        in_S_noc1_valid = valid_aux_0;    
+        
+        in_S_noc2_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_2);
+        in_S_noc2_valid = valid_aux_0;
+
+        in_S_noc3_data = mpi_receive_data(rankS, valid_aux_0, DATA_NOC_3);
+        in_S_noc3_valid = valid_aux_0;
+        
+    end
+
+    if(rankW != -1) begin
+        // SENDING
+        mpi_send_all_yummy(out_W_noc1_yummy, 
+                           out_W_noc2_yummy, 
+                           out_W_noc3_yummy, 
+                           rankW, rank, ALL_YUMMY);
+        
+        mpi_send_data(out_W_noc1_data, out_W_noc1_valid, rankW, rank, DATA_NOC_1);
+        mpi_send_data(out_W_noc2_data, out_W_noc2_valid, rankW, rank, DATA_NOC_2);
+        mpi_send_data(out_W_noc3_data, out_W_noc3_valid, rankW, rank, DATA_NOC_3);
+
+        // RECEIVING
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankW, ALL_YUMMY);
+
+        in_W_noc1_yummy = yummy_aux_0;
+        in_W_noc2_yummy = yummy_aux_1;
+        in_W_noc3_yummy = yummy_aux_2;
+
+        // receive data
+        in_W_noc1_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_1);
+        in_W_noc1_valid = valid_aux_0;    
+        
+        in_W_noc2_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_2);
+        in_W_noc2_valid = valid_aux_0;
+
+        in_W_noc3_data = mpi_receive_data(rankW, valid_aux_0, DATA_NOC_3);
+        in_W_noc3_valid = valid_aux_0;
+        
+    end
+`endif //MPI_OPT_2
+
+`ifdef MPI_OPT_3
+    if(rankN != -1) begin
+        // SENDING
+        mpi_send_all_noc(out_N_noc1_data, out_N_noc1_valid,
+                         out_N_noc2_data, out_N_noc2_valid,
+                         out_N_noc3_data, out_N_noc3_valid,
+                         rankN, rank, DATA_ALL_NOC);
+        mpi_send_all_yummy(out_N_noc1_yummy, 
+                           out_N_noc2_yummy, 
+                           out_N_noc3_yummy, 
+                           rankN, rank, ALL_YUMMY);
+        
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankN, DATA_ALL_NOC);
+
+        in_N_noc1_data  = data_aux_0;
+        in_N_noc1_valid = valid_aux_0;
+        in_N_noc2_data  = data_aux_1;
+        in_N_noc2_valid = valid_aux_1;
+        in_N_noc3_data  = data_aux_2;
+        in_N_noc3_valid = valid_aux_2;
+
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankN, ALL_YUMMY);
+
+        in_N_noc1_yummy = yummy_aux_0;
+        in_N_noc2_yummy = yummy_aux_1;
+        in_N_noc3_yummy = yummy_aux_2;
+        
+    end
+
+    if(rankE != -1) begin
+        // SENDING
+        mpi_send_all_noc(out_E_noc1_data, out_E_noc1_valid,
+                         out_E_noc2_data, out_E_noc2_valid,
+                         out_E_noc3_data, out_E_noc3_valid,
+                         rankE, rank, DATA_ALL_NOC);
+        mpi_send_all_yummy(out_E_noc1_yummy, 
+                           out_E_noc2_yummy, 
+                           out_E_noc3_yummy, 
+                           rankE, rank, ALL_YUMMY);
+        
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankE, DATA_ALL_NOC);
+
+        in_E_noc1_data  = data_aux_0;
+        in_E_noc1_valid = valid_aux_0;
+        in_E_noc2_data  = data_aux_1;
+        in_E_noc2_valid = valid_aux_1;
+        in_E_noc3_data  = data_aux_2;
+        in_E_noc3_valid = valid_aux_2;
+
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankE, ALL_YUMMY);
+
+        in_E_noc1_yummy = yummy_aux_0;
+        in_E_noc2_yummy = yummy_aux_1;
+        in_E_noc3_yummy = yummy_aux_2;
+        
+    end
+
+    if(rankS != -1) begin
+        // SENDING
+        mpi_send_all_noc(out_S_noc1_data, out_S_noc1_valid,
+                         out_S_noc2_data, out_S_noc2_valid,
+                         out_S_noc3_data, out_S_noc3_valid,
+                         rankS, rank, DATA_ALL_NOC);
+        mpi_send_all_yummy(out_S_noc1_yummy, 
+                           out_S_noc2_yummy, 
+                           out_S_noc3_yummy, 
+                           rankS, rank, ALL_YUMMY);
+        
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankS, DATA_ALL_NOC);
+
+        in_S_noc1_data  = data_aux_0;
+        in_S_noc1_valid = valid_aux_0;
+        in_S_noc2_data  = data_aux_1;
+        in_S_noc2_valid = valid_aux_1;
+        in_S_noc3_data  = data_aux_2;
+        in_S_noc3_valid = valid_aux_2;
+
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankS, ALL_YUMMY);
+
+        in_S_noc1_yummy = yummy_aux_0;
+        in_S_noc2_yummy = yummy_aux_1;
+        in_S_noc3_yummy = yummy_aux_2;
+        
+    end
+
+    if(rankW != -1) begin
+        // SENDING
+        mpi_send_all_noc(out_W_noc1_data, out_W_noc1_valid,
+                         out_W_noc2_data, out_W_noc2_valid,
+                         out_W_noc3_data, out_W_noc3_valid,
+                         rankW, rank, DATA_ALL_NOC);
+        mpi_send_all_yummy(out_W_noc1_yummy, 
+                           out_W_noc2_yummy, 
+                           out_W_noc3_yummy, 
+                           rankW, rank, ALL_YUMMY);
+        
+        // RECEIVING
+        mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                            data_aux_1, valid_aux_1,
+                            data_aux_2, valid_aux_2,
+                            rankW, DATA_ALL_NOC);
+
+        in_W_noc1_data  = data_aux_0;
+        in_W_noc1_valid = valid_aux_0;
+        in_W_noc2_data  = data_aux_1;
+        in_W_noc2_valid = valid_aux_1;
+        in_W_noc3_data  = data_aux_2;
+        in_W_noc3_valid = valid_aux_2;
+
+        mpi_receive_all_yummy(yummy_aux_0,
+                              yummy_aux_1,
+                              yummy_aux_2,
+                              rankW, ALL_YUMMY);
+
+        in_W_noc1_yummy = yummy_aux_0;
+        in_W_noc2_yummy = yummy_aux_1;
+        in_W_noc3_yummy = yummy_aux_2;
+        
+    end
+`endif //MPI_OPT_3
+
+`ifdef MPI_OPT_4
+    if(rankN != -1) begin
+        //SENDING
+        mpi_send_all(out_N_noc1_data, out_N_noc1_valid, out_N_noc1_yummy,
+                     out_N_noc2_data, out_N_noc2_valid, out_N_noc2_yummy,
+                     out_N_noc3_data, out_N_noc3_valid, out_N_noc3_yummy,
+                     rankN, rank, ALL_NOC);
+
+        // RECEIVING
+        mpi_receive_all(data_aux_0, valid_aux_0, yummy_aux_0,
+                        data_aux_1, valid_aux_1, yummy_aux_1,
+                        data_aux_2, valid_aux_2, yummy_aux_2,
+                        rankN, ALL_NOC);
+        
+        in_N_noc1_data  = data_aux_0;
+        in_N_noc1_valid = valid_aux_0;
+        in_N_noc2_data  = data_aux_1;
+        in_N_noc2_valid = valid_aux_1;
+        in_N_noc3_data  = data_aux_2;
+        in_N_noc3_valid = valid_aux_2;
+        in_N_noc1_yummy = yummy_aux_0;
+        in_N_noc2_yummy = yummy_aux_1;
+        in_N_noc3_yummy = yummy_aux_2;
+    end
+
+    if(rankE != -1) begin
+        //SENDING
+        mpi_send_all(out_E_noc1_data, out_E_noc1_valid, out_E_noc1_yummy,
+                     out_E_noc2_data, out_E_noc2_valid, out_E_noc2_yummy,
+                     out_E_noc3_data, out_E_noc3_valid, out_E_noc3_yummy,
+                     rankE, rank, ALL_NOC);
+
+        // RECEIVING
+        mpi_receive_all(data_aux_0, valid_aux_0, yummy_aux_0,
+                        data_aux_1, valid_aux_1, yummy_aux_1,
+                        data_aux_2, valid_aux_2, yummy_aux_2,
+                        rankE, ALL_NOC);
+        
+        in_E_noc1_data  = data_aux_0;
+        in_E_noc1_valid = valid_aux_0;
+        in_E_noc2_data  = data_aux_1;
+        in_E_noc2_valid = valid_aux_1;
+        in_E_noc3_data  = data_aux_2;
+        in_E_noc3_valid = valid_aux_2;
+        in_E_noc1_yummy = yummy_aux_0;
+        in_E_noc2_yummy = yummy_aux_1;
+        in_E_noc3_yummy = yummy_aux_2;
+        
+    end
+
+    if(rankS != -1) begin
+        //SENDING
+        mpi_send_all(out_S_noc1_data, out_S_noc1_valid, out_S_noc1_yummy,
+                     out_S_noc2_data, out_S_noc2_valid, out_S_noc2_yummy,
+                     out_S_noc3_data, out_S_noc3_valid, out_S_noc3_yummy,
+                     rankS, rank, ALL_NOC);
+
+        // RECEIVING
+        mpi_receive_all(data_aux_0, valid_aux_0, yummy_aux_0,
+                        data_aux_1, valid_aux_1, yummy_aux_1,
+                        data_aux_2, valid_aux_2, yummy_aux_2,
+                        rankS, ALL_NOC);
+        
+        in_S_noc1_data  = data_aux_0;
+        in_S_noc1_valid = valid_aux_0;
+        in_S_noc2_data  = data_aux_1;
+        in_S_noc2_valid = valid_aux_1;
+        in_S_noc3_data  = data_aux_2;
+        in_S_noc3_valid = valid_aux_2;
+        in_S_noc1_yummy = yummy_aux_0;
+        in_S_noc2_yummy = yummy_aux_1;
+        in_S_noc3_yummy = yummy_aux_2;
+        
+    end
+
+    if(rankW != -1) begin
+        //SENDING
+        mpi_send_all(out_W_noc1_data, out_W_noc1_valid, out_W_noc1_yummy,
+                     out_W_noc2_data, out_W_noc2_valid, out_W_noc2_yummy,
+                     out_W_noc3_data, out_W_noc3_valid, out_W_noc3_yummy,
+                     rankW, rank, ALL_NOC);
+
+        // RECEIVING
+        mpi_receive_all(data_aux_0, valid_aux_0, yummy_aux_0,
+                        data_aux_1, valid_aux_1, yummy_aux_1,
+                        data_aux_2, valid_aux_2, yummy_aux_2,
+                        rankW, ALL_NOC);
+        
+        in_W_noc1_data  = data_aux_0;
+        in_W_noc1_valid = valid_aux_0;
+        in_W_noc2_data  = data_aux_1;
+        in_W_noc2_valid = valid_aux_1;
+        in_W_noc3_data  = data_aux_2;
+        in_W_noc3_valid = valid_aux_2;
+        in_W_noc1_yummy = yummy_aux_0;
+        in_W_noc2_yummy = yummy_aux_1;
+        in_W_noc3_yummy = yummy_aux_2;
+        
+    end
+`endif //MPI_OPT_4
     #500;
+    if(checkTestEnd==0)
+    begin
+        test_exit = mpi_receive_finish();
+        checkTestEnd = 10000;
+    end else begin
+        checkTestEnd--;
+    end
 end
 
 $display("Trace done: METRO_TILE_%d",rank);

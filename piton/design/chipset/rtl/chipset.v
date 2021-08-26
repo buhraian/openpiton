@@ -180,13 +180,13 @@ module chipset(
     output                                      offchip_processor_noc3_valid,
     output [`NOC_DATA_WIDTH-1:0]                offchip_processor_noc3_data,
     input                                       offchip_processor_noc3_yummy,
-    `ifdef VERILATOR
+    //`ifdef VERILATOR
     `ifdef METRO_CHIPSET
     output wire                                 good_end,
     output wire                                 bad_end,
     input  wire                                 test_ena,
     `endif
-    `endif
+    //`endif
 `elsif PITONSYS_INC_PASSTHRU
     // Source synchronous differential interface with virtual channels
     `ifdef PITON_CHIPSET_CLKS_GEN
@@ -1241,13 +1241,13 @@ chipset_impl_noc_power_test  chipset_impl (
     .test_start         (test_start         ),
     .uart_rst_out_n     (uart_rst_out_n     ),
     .invalid_access_o   (invalid_access     ),
-`ifdef VERILATOR
+//`ifdef VERILATOR
 `ifdef METRO_CHIPSET
     .good_end(good_end),
     .bad_end(bad_end),
     .test_ena(test_ena),
 `endif
-`endif
+//`endif
 
 `ifdef PITON_NOC_POWER_CHIPSET_TEST
     .noc_power_test_hop_count (noc_power_test_hop_count),

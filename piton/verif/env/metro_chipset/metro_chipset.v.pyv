@@ -70,14 +70,35 @@ import "DPI-C" function void initialize();
 import "DPI-C" function void finalize();
 import "DPI-C" function int getRank();
 import "DPI-C" function int getSize();
-
-import "DPI-C" function void mpi_send_yummy(input byte unsigned message, input int dest, input int rank, input int flag);
-import "DPI-C" function byte unsigned mpi_receive_yummy(input int origin, input int flag);
-
-import "DPI-C" function longint unsigned mpi_receive_data(input int origin, output byte unsigned valid, input int flag);
-import "DPI-C" function void mpi_send_data(input longint unsigned data, input byte unsigned valid, input int dest, input int rank, input int flag);
-
 import "DPI-C" function void barrier();
+
+import "DPI-C" function byte unsigned mpi_receive_finish();
+import "DPI-C" function void mpi_send_finish(input byte unsigned message, input int rank);
+import "DPI-C" function byte unsigned mpi_receive_yummy(input int origin, input int flag);
+import "DPI-C" function void mpi_send_yummy(input byte unsigned message, input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_send_data(input longint unsigned data, input byte unsigned valid, input int dest, input int rank, input int flag);
+import "DPI-C" function longint unsigned mpi_receive_data(input int origin, output byte unsigned valid, input int flag);
+import "DPI-C" function void mpi_send_all_noc(input longint unsigned data_0, input byte unsigned valid_0, 
+                                              input longint unsigned data_1, input byte unsigned valid_1, 
+                                              input longint unsigned data_2, input byte unsigned valid_2, 
+                                              input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all_noc(output longint unsigned data_0, output byte unsigned valid_0, 
+                                                 output longint unsigned data_1, output byte unsigned valid_1, 
+                                                 output longint unsigned data_2, output byte unsigned valid_2,
+                                                 input int origin, input int flag);
+import "DPI-C" function void mpi_send_all_yummy(input byte unsigned yummy_0, input byte unsigned yummy_1, input byte unsigned yummy_2, 
+                                                input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all_yummy(output byte unsigned yummy_0, output byte unsigned yummy_1, output byte unsigned yummy_2, 
+                                                   input int origin, input int flag);
+import "DPI-C" function void mpi_send_all(input longint unsigned data_0, input byte unsigned valid_0, input byte unsigned yummy_0,
+                                          input longint unsigned data_1, input byte unsigned valid_1, input byte unsigned yummy_1,
+                                          input longint unsigned data_2, input byte unsigned valid_2, input byte unsigned yummy_2,
+                                          input int dest, input int rank, input int flag);
+import "DPI-C" function void mpi_receive_all(output longint unsigned data_0, output byte unsigned valid_0, output byte unsigned yummy_0,
+                                             output longint unsigned data_1, output byte unsigned valid_1, output byte unsigned yummy_1,
+                                             output longint unsigned data_2, output byte unsigned valid_2, output byte unsigned yummy_2,
+                                             input int origin, input int flag);
+
 //add metro_stuff
 `endif // ifndef VERILATOR
 `endif // ifdef PITON_DPI
@@ -140,6 +161,9 @@ reg [4:0]                       pll_rangea;
 wire                            pll_lock = 1'b1;
 reg [1:0]                       clk_mux_sel;
 reg                             async_mux;
+reg                             test_ena;
+wire                            good_end;
+wire                            bad_end;
 // For simulation only, monitor stuff.  Only cross-module referenced
 // do not delete.
 reg                             diag_done;
@@ -241,14 +265,24 @@ always #25000 spi_sys_clk = ~spi_sys_clk;                       // 20MHz
 int rank;
 int size;
 int dest;
-byte unsigned valid_aux;
+int checkTestEnd;
+byte unsigned valid_aux_0, valid_aux_1, valid_aux_2;
+longint unsigned data_aux_0, data_aux_1, data_aux_2;
+byte unsigned yummy_aux_0, yummy_aux_1, yummy_aux_2;
+byte test_end;
 
-int YUMMY_NOC_1 ;
-int DATA_NOC_1  ;
-int YUMMY_NOC_2 ;
-int DATA_NOC_2  ;
-int YUMMY_NOC_3 ;
-int DATA_NOC_3  ;
+reg test_exit;
+
+int YUMMY_NOC_1  ;
+int DATA_NOC_1   ;
+int YUMMY_NOC_2  ;
+int DATA_NOC_2   ;
+int YUMMY_NOC_3  ;
+int DATA_NOC_3   ;
+int TEST_FINISH  ;
+int DATA_ALL_NOC ;
+int ALL_YUMMY    ;
+int ALL_NOC      ;
 
 `ifndef VERILATOR
 initial
@@ -256,16 +290,22 @@ begin
     $dumpfile("metro_chipset.vcd");
     $dumpvars(0, metro_chipset);
 
-    YUMMY_NOC_1 = 0;
-    DATA_NOC_1  = 1;
-    YUMMY_NOC_2 = 2;
-    DATA_NOC_2  = 3;
-    YUMMY_NOC_3 = 4;
-    DATA_NOC_3  = 5;
+    YUMMY_NOC_1  = 0;
+    DATA_NOC_1   = 1;
+    YUMMY_NOC_2  = 2;
+    DATA_NOC_2   = 3;
+    YUMMY_NOC_3  = 4;
+    DATA_NOC_3   = 5;
+    TEST_FINISH  = 6;
+    DATA_ALL_NOC = 7;
+    ALL_YUMMY    = 8;
+    ALL_NOC      = 9;
+
+    test_end = 0;
 
     //metro initialization
     initialize();
-    //barrier();
+    barrier();
     rank = getRank();
     size = getSize();
     $display("METRO_CHIPSET INITIALIZING...");
@@ -366,6 +406,7 @@ begin
     processor_offchip_noc3_valid = 0;
     processor_offchip_noc3_data  = 0;
     offchip_processor_noc3_yummy = 0;
+    test_ena                     = 0;
 
     // Reset PLL for 100 cycles
     repeat(100)@(posedge core_ref_clk);
@@ -400,45 +441,161 @@ begin
 
 //metro code
 
+test_ena = 1;
+test_exit = 0;
+checkTestEnd = 50000;
 
-// send data
 $display("CHIPSET INITIALIZED");
 @(posedge core_ref_clk);
-for(int i = 0; i < 350000; i = i + 1)
+while(!test_exit)
 begin
     #500;
-// send data
+    test_end = test_end || (good_end==1 || bad_end==1);
+`ifdef MPI_OPT_0
     //$display("sending_chipset");
     mpi_send_data(offchip_processor_noc1_data, offchip_processor_noc1_valid, dest, rank, DATA_NOC_1);
+    mpi_send_yummy(processor_offchip_noc1_yummy, dest, rank, YUMMY_NOC_1);
+    
+    mpi_send_data(offchip_processor_noc2_data, offchip_processor_noc2_valid, dest, rank, DATA_NOC_2);
+    mpi_send_yummy(processor_offchip_noc2_yummy, dest, rank, YUMMY_NOC_2);
+
+    mpi_send_data(offchip_processor_noc3_data, offchip_processor_noc3_valid, dest, rank, DATA_NOC_3);
+    mpi_send_yummy(processor_offchip_noc3_yummy, dest, rank, YUMMY_NOC_3);
+
+    //$display("receiving_chipset");
+    processor_offchip_noc1_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_1);
+    processor_offchip_noc1_valid = valid_aux_0;
+    offchip_processor_noc1_yummy = mpi_receive_yummy(dest, YUMMY_NOC_1);
+
+    processor_offchip_noc2_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_2);
+    processor_offchip_noc2_valid = valid_aux_0;
+    offchip_processor_noc2_yummy = mpi_receive_yummy(dest, YUMMY_NOC_2);
+
+    processor_offchip_noc3_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_3);
+    processor_offchip_noc3_valid = valid_aux_0;
+    offchip_processor_noc3_yummy = mpi_receive_yummy(dest, YUMMY_NOC_3);
+`endif //MPI_OPT_0
+`ifdef MPI_OPT_1
+    mpi_send_all_noc(offchip_processor_noc1_data, offchip_processor_noc1_valid,
+                     offchip_processor_noc2_data, offchip_processor_noc2_valid,
+                     offchip_processor_noc3_data, offchip_processor_noc3_valid,
+                     dest, rank, DATA_ALL_NOC);
     // send yummy
     mpi_send_yummy(processor_offchip_noc1_yummy, dest, rank, YUMMY_NOC_1);
+    // send yummy
+    mpi_send_yummy(processor_offchip_noc2_yummy, dest, rank, YUMMY_NOC_2);
+    // send yummy
+    mpi_send_yummy(processor_offchip_noc3_yummy, dest, rank, YUMMY_NOC_3);
+
+    // receive data
+    mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                        data_aux_1, valid_aux_1,
+                        data_aux_2, valid_aux_2,
+                        dest, DATA_ALL_NOC);
+
+    processor_offchip_noc1_data  = data_aux_0;
+    processor_offchip_noc2_data  = data_aux_1;
+    processor_offchip_noc3_data  = data_aux_2;
+    processor_offchip_noc1_valid = valid_aux_0;
+    processor_offchip_noc2_valid = valid_aux_1;
+    processor_offchip_noc3_valid = valid_aux_2;
+
+    // receive yummy
+    offchip_processor_noc1_yummy = mpi_receive_yummy(dest, YUMMY_NOC_1);
+    // receive yummy
+    offchip_processor_noc2_yummy = mpi_receive_yummy(dest, YUMMY_NOC_2);
+    // receive yummy
+    offchip_processor_noc3_yummy = mpi_receive_yummy(dest, YUMMY_NOC_3);
+`endif //MPI_OPT_1
+`ifdef MPI_OPT_2
+    // send yummy
+    mpi_send_all_yummy(processor_offchip_noc1_yummy, processor_offchip_noc2_yummy, processor_offchip_noc3_yummy, dest, rank, ALL_YUMMY);
+    // send data
+    mpi_send_data(offchip_processor_noc1_data, offchip_processor_noc1_valid, dest, rank, DATA_NOC_1);
 
     // send data
     mpi_send_data(offchip_processor_noc2_data, offchip_processor_noc2_valid, dest, rank, DATA_NOC_2);
-    // send yummy
-    mpi_send_yummy(processor_offchip_noc2_yummy, dest, rank, YUMMY_NOC_2);
 
     // send data
     mpi_send_data(offchip_processor_noc3_data, offchip_processor_noc3_valid, dest, rank, DATA_NOC_3);
-    // send yummy
-    mpi_send_yummy(processor_offchip_noc3_yummy, dest, rank, YUMMY_NOC_3);
-    //$display("receiving_chipset");
+
+    // Receive yummy
+    mpi_receive_all_yummy(yummy_aux_0, yummy_aux_1, yummy_aux_2, dest, ALL_YUMMY);
+    offchip_processor_noc1_yummy = yummy_aux_0;
+    offchip_processor_noc2_yummy = yummy_aux_1;
+    offchip_processor_noc3_yummy = yummy_aux_2;
+    
     // receive data
-    processor_offchip_noc1_data = mpi_receive_data(dest, valid_aux, DATA_NOC_1);
-    processor_offchip_noc1_valid = valid_aux;
-    // receive yummy
-    offchip_processor_noc1_yummy = mpi_receive_yummy(dest, YUMMY_NOC_1);
+    processor_offchip_noc1_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_1);
+    processor_offchip_noc1_valid = valid_aux_0;
 
-    processor_offchip_noc2_data = mpi_receive_data(dest, valid_aux, DATA_NOC_2);
-    processor_offchip_noc2_valid = valid_aux;
-    // receive yummy
-    offchip_processor_noc2_yummy = mpi_receive_yummy(dest, YUMMY_NOC_2);
+    processor_offchip_noc2_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_2);
+    processor_offchip_noc2_valid = valid_aux_0;
 
-    processor_offchip_noc3_data = mpi_receive_data(dest, valid_aux, DATA_NOC_3);
-    processor_offchip_noc3_valid = valid_aux;
-    // receive yummy
-    offchip_processor_noc3_yummy = mpi_receive_yummy(dest, YUMMY_NOC_3);
+    processor_offchip_noc3_data = mpi_receive_data(dest, valid_aux_0, DATA_NOC_3);
+    processor_offchip_noc3_valid = valid_aux_0;
+`endif //MPI_OPT_2
+`ifdef MPI_OPT_3
+    // send yummy
+    mpi_send_all_yummy(processor_offchip_noc1_yummy, processor_offchip_noc2_yummy, processor_offchip_noc3_yummy, dest, rank, ALL_YUMMY);
+
+    // send data
+    mpi_send_all_noc(offchip_processor_noc1_data, offchip_processor_noc1_valid,
+                     offchip_processor_noc2_data, offchip_processor_noc2_valid,
+                     offchip_processor_noc3_data, offchip_processor_noc3_valid,
+                     dest, rank, DATA_ALL_NOC);
+
+    // Receive yummy
+    mpi_receive_all_yummy(yummy_aux_0, yummy_aux_1, yummy_aux_2, dest, ALL_YUMMY);
+    offchip_processor_noc1_yummy = yummy_aux_0;
+    offchip_processor_noc2_yummy = yummy_aux_1;
+    offchip_processor_noc3_yummy = yummy_aux_2;
+
+    // receive data
+    mpi_receive_all_noc(data_aux_0, valid_aux_0,
+                        data_aux_1, valid_aux_1,
+                        data_aux_2, valid_aux_2,
+                        dest, DATA_ALL_NOC);
+
+    processor_offchip_noc1_data  = data_aux_0;
+    processor_offchip_noc2_data  = data_aux_1;
+    processor_offchip_noc3_data  = data_aux_2;
+    processor_offchip_noc1_valid = valid_aux_0;
+    processor_offchip_noc2_valid = valid_aux_1;
+    processor_offchip_noc3_valid = valid_aux_2;
+`endif //MPI_OPT_3
+`ifdef MPI_OPT_4
+    // send data
+    mpi_send_all(offchip_processor_noc1_data, offchip_processor_noc1_valid, processor_offchip_noc1_yummy,
+                 offchip_processor_noc2_data, offchip_processor_noc2_valid, processor_offchip_noc2_yummy,
+                 offchip_processor_noc3_data, offchip_processor_noc3_valid, processor_offchip_noc3_yummy,
+                 dest, rank, ALL_NOC);
+        
+    // receive data
+    mpi_receive_all(data_aux_0, valid_aux_0, yummy_aux_0,
+                    data_aux_1, valid_aux_1, yummy_aux_1,
+                    data_aux_2, valid_aux_2, yummy_aux_2,
+                    dest, ALL_NOC);
+    
+    processor_offchip_noc1_data  = data_aux_0; 
+    processor_offchip_noc1_valid = valid_aux_0;
+    processor_offchip_noc2_data  = data_aux_1; 
+    processor_offchip_noc2_valid = valid_aux_1;
+    processor_offchip_noc3_data  = data_aux_2; 
+    processor_offchip_noc3_valid = valid_aux_2;
+    offchip_processor_noc1_yummy = yummy_aux_0;
+    offchip_processor_noc2_yummy = yummy_aux_1;
+    offchip_processor_noc3_yummy = yummy_aux_2; 
+`endif //MPI_OPT_4
     #500;
+    if(checkTestEnd==0)
+    begin
+        mpi_send_finish(test_end, rank);
+        checkTestEnd = 10000;
+        test_exit = test_end;
+    end else begin
+        checkTestEnd--;
+    end
 end
 $display("Trace done: METRO_CHIPSET");
 finalize();
@@ -467,13 +624,13 @@ chipset chipset(
     .piton_prsnt_n(1'b0),
     .piton_ready_n(1'b0),
 
-    `ifdef VERILATOR
+    //`ifdef VERILATOR
     `ifdef METRO_CHIPSET
     .good_end(good_end),
     .bad_end(bad_end),
     .test_ena(test_ena),
     `endif
-    `endif
+    //`endif
 
     // Synchronous with core_ref_clk (same as io_clk in this case) and no virtual channels
     .processor_offchip_noc1_valid   (processor_offchip_noc1_valid),

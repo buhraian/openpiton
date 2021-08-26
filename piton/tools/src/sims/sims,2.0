@@ -1737,7 +1737,7 @@ sub generic_sim_run
     # run the command
     if ($opt{vcs_run}) {
       if ($opt{sys} eq "metro_chipset") {
-        $cmd .= "mpirun -np 1 --oversubscribe --output-filename filename ./metro_chipset/rel-0.1/simv " ;
+        $cmd .= "mpirun -np 1 -map-by core --oversubscribe --output-filename filename ./metro_chipset/rel-0.1/simv " ;
         $cmd .= " " ;
         $cmd .= join (" ", @{$opt{sim_run_args}}) ;
         $cmd .= " : -np $ENV{PITON_NUM_TILES} --oversubscribe --output-filename filename ./metro_tile/rel-0.1/simv" ;
