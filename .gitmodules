@@ -1,6 +1,9 @@
 [submodule "piton/design/chip/tile/ariane"]
 	path = piton/design/chip/tile/ariane
-	url = https://github.com/pulp-platform/ariane.git
-[submodule "aws"]
-	path = piton/design/aws
-	url = https://github.com/PrincetonUniversity/openpiton-aws.git
+       url = https://github.com/pulp-platform/ariane.git
+[submodule "piton/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha"]
+	path = piton/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha
+	url = https://github.com/cohort-project/sha256.git
+[submodule "piton/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes"]
+	path = piton/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes
+	url = https://github.com/freecores/aes-128_pipelined_encryption.git

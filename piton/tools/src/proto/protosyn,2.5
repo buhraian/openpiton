@@ -38,9 +38,11 @@
 
 import os, sys, re, make_mem_map, subprocess, stat, time
 import image2stream as i2s
+import datetime as dt
 from optparse import OptionParser
 from fpga_lib import *
 from dbg import *
+from math import ceil
 
 DV_ROOT = os.environ['DV_ROOT']
 MODEL_DIR = os.environ['MODEL_DIR']
@@ -95,7 +97,7 @@ def usage():
     print("       --config_l2_associativity  <number>", file=sys.stderr)
     print("              Cache associativities, default: 4", file=sys.stderr)
     print("\n       --bram-test <test_name>", file=sys.stderr)
-    print("              Name of the test to be mapped into BRAM", file=sys.stderr)
+    print("              Name of the test to be simulated and mapped into BRAM/DRAM", file=sys.stderr)
     print("\n       --no-ddr", file=sys.stderr)
     print("              Implement design without DDR memory", file=sys.stderr)
     print("\n       --eth", file=sys.stderr)
@@ -329,6 +331,7 @@ def runImplFlow(board, design_data, work_dir, log_dir, def_list, slurm, dep_list
 
     #dname = board + "_piton"
     #os.chdir(dname)
+
     print_info("Running FPGA implementation down to bitstream generation")
     design_board_dir = os.path.join(design_data["PATH"], board)
     impl_log = os.path.join(log_dir, PROJECT_IMPL_LOG)
@@ -449,6 +452,7 @@ def setParserOptions(parser):
     parser.add_option("--x_tiles", dest="x_tiles", action="store", default=1)
     parser.add_option("--y_tiles", dest="y_tiles", action="store", default=1)
     parser.add_option("--num_tiles", dest="num_tiles", action="store", default=1)
+    parser.add_option("--cohort_tiles", dest="cohort_tiles", action="store", default=0)
     parser.add_option("--config_l1i_size", dest="config_l1i_size", action="store", default=16384)
     parser.add_option("--config_l1d_size", dest="config_l1d_size", action="store", default=8192)
     parser.add_option("--config_l15_size", dest="config_l15_size", action="store", default=8192)
@@ -493,6 +497,11 @@ def makeDefList(options):
     if options.core == 'ariane':
         defines.append("NO_RTL_CSM")
 
+    # mirror of the lines above
+    if options.core == 'cohort':
+        defines.append("NO_RTL_CSM")
+        defines.append("DECADES_DECOUPLING")
+
     if (options.board == "f1"):
         print_info("design option is ignored for f1")
 
@@ -514,7 +523,7 @@ def makeDefList(options):
         defines.append("PITONSYS_MEM_ZEROER")    
 
     # do not use SD controller if BRAM is used for boot or a test or if board doesn't have sd
-    if (options.test_name != None) or (options.board in {"piton_board", 'xupp3r', "f1"}):
+    if (options.test_name != None) or (options.board in {"piton_board", "xupp3r", "f1"}):
         pass
     else:   # default option
         defines.append("PITON_FPGA_SD_BOOT")
@@ -578,11 +587,11 @@ def makeDefList(options):
     # Define for  UART16550 required (so for all except Piton Board)
     if options.board != "piton_board":
         defines.append("PITON_UART16550")
-
+ 
     # --eth CL options is default for chipset
     if options.eth or options.design == "chipset" or options.design == "system":
         # Ethernet controller is supported on Genesys2 and nexysVideo
-        if options.board == "genesys2" or options.board == "nexysVideo":
+        if options.board == "nexysVideo":
             defines.append("PITON_FPGA_ETHERNETLITE")
         else:
             print_info("--eth option is ignored for %s" % options.board)
@@ -727,7 +736,10 @@ def main():
     os.environ['PITON_X_TILES']   = str(options.x_tiles)
     os.environ['PITON_Y_TILES']   = str(options.y_tiles)
     os.environ['PITON_NUM_TILES'] = str(options.num_tiles)
+    os.environ['COHORT_TILES'] = str(options.cohort_tiles)
 
+    print_info("cohort_tiles = " + str(options.cohort_tiles))
+    
     # core variant
     print_info("core      = " + str(options.core))
     for i in range(int(options.num_tiles)):
@@ -764,6 +776,17 @@ def main():
         for i in range(int(options.num_tiles)):
             os.environ['RTL_ARIANE' + str(i)] = "1"
             print_info('setenv RTL_ARIANE' + str(i))
+
+    elif options.core == 'cohort':
+        os.environ['PITON_ARIANE'] = "1"
+        os.environ['PITON_RV64_PLATFORM'] = "1"
+        os.environ['WT_DCACHE']    = "1"
+        os.environ['DECADES_DECOUPLING']    = "1"
+
+        for i in range(int(options.num_tiles)):
+            if i < ceil(int(options.num_tiles) / 2):
+                os.environ['RTL_ARIANE' + str(i)] = "1"
+                print_info('setenv RTL_ARIANE' + str(i))
 
     elif options.core == 'sparc':
         # this is the default
@@ -844,6 +867,9 @@ def main():
             config += ' -pico -pico_het'
 
         if options.core == 'ariane':
+            config += ' -ariane'
+
+        if options.core == 'cohort':
             config += ' -ariane'
 
         print_info("Synthesizing a test: %s" % options.test_name)

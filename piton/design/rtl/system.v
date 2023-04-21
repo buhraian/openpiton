@@ -106,7 +106,7 @@ module system(
     input                                       passthru_chipset_clk_p,
     input                                       passthru_chipset_clk_n,
 `endif // endif PITON_PASSTHRU_CLKS_GEN
-`endif // endif PITON_SYS_INC_PASSTHRU
+`endif // endif PITONSYS_INC_PASSTHRU
 
 `ifndef F1_BOARD
 `ifdef PITON_CHIPSET_CLKS_GEN
@@ -247,23 +247,23 @@ module system(
     output wire [`AXI4_LEN_WIDTH    -1:0]    m_axi_awlen,
     output wire [`AXI4_SIZE_WIDTH   -1:0]    m_axi_awsize,
     output wire [`AXI4_BURST_WIDTH  -1:0]    m_axi_awburst,
-    output wire                                  m_axi_awlock,
+    output wire                              m_axi_awlock,
     output wire [`AXI4_CACHE_WIDTH  -1:0]    m_axi_awcache,
     output wire [`AXI4_PROT_WIDTH   -1:0]    m_axi_awprot,
     output wire [`AXI4_QOS_WIDTH    -1:0]    m_axi_awqos,
     output wire [`AXI4_REGION_WIDTH -1:0]    m_axi_awregion,
     output wire [`AXI4_USER_WIDTH   -1:0]    m_axi_awuser,
-    output wire                                  m_axi_awvalid,
-    input  wire                                  m_axi_awready,
+    output wire                              m_axi_awvalid,
+    input  wire                              m_axi_awready,
 
     // AXI Write Data Channel Signals
     output wire  [`AXI4_ID_WIDTH     -1:0]    m_axi_wid,
     output wire  [`AXI4_DATA_WIDTH   -1:0]    m_axi_wdata,
     output wire  [`AXI4_STRB_WIDTH   -1:0]    m_axi_wstrb,
-    output wire                                   m_axi_wlast,
+    output wire                               m_axi_wlast,
     output wire  [`AXI4_USER_WIDTH   -1:0]    m_axi_wuser,
-    output wire                                   m_axi_wvalid,
-    input  wire                                   m_axi_wready,
+    output wire                               m_axi_wvalid,
+    input  wire                               m_axi_wready,
 
     // AXI Read Address Channel Signals
     output wire  [`AXI4_ID_WIDTH     -1:0]    m_axi_arid,
@@ -271,30 +271,30 @@ module system(
     output wire  [`AXI4_LEN_WIDTH    -1:0]    m_axi_arlen,
     output wire  [`AXI4_SIZE_WIDTH   -1:0]    m_axi_arsize,
     output wire  [`AXI4_BURST_WIDTH  -1:0]    m_axi_arburst,
-    output wire                                   m_axi_arlock,
+    output wire                               m_axi_arlock,
     output wire  [`AXI4_CACHE_WIDTH  -1:0]    m_axi_arcache,
     output wire  [`AXI4_PROT_WIDTH   -1:0]    m_axi_arprot,
     output wire  [`AXI4_QOS_WIDTH    -1:0]    m_axi_arqos,
     output wire  [`AXI4_REGION_WIDTH -1:0]    m_axi_arregion,
     output wire  [`AXI4_USER_WIDTH   -1:0]    m_axi_aruser,
-    output wire                                   m_axi_arvalid,
-    input  wire                                   m_axi_arready,
+    output wire                               m_axi_arvalid,
+    input  wire                               m_axi_arready,
 
     // AXI Read Data Channel Signals
     input  wire  [`AXI4_ID_WIDTH     -1:0]    m_axi_rid,
     input  wire  [`AXI4_DATA_WIDTH   -1:0]    m_axi_rdata,
     input  wire  [`AXI4_RESP_WIDTH   -1:0]    m_axi_rresp,
-    input  wire                                   m_axi_rlast,
+    input  wire                               m_axi_rlast,
     input  wire  [`AXI4_USER_WIDTH   -1:0]    m_axi_ruser,
-    input  wire                                   m_axi_rvalid,
-    output wire                                   m_axi_rready,
+    input  wire                               m_axi_rvalid,
+    output wire                               m_axi_rready,
 
     // AXI Write Response Channel Signals
     input  wire  [`AXI4_ID_WIDTH     -1:0]    m_axi_bid,
     input  wire  [`AXI4_RESP_WIDTH   -1:0]    m_axi_bresp,
     input  wire  [`AXI4_USER_WIDTH   -1:0]    m_axi_buser,
-    input  wire                                   m_axi_bvalid,
-    output wire                                   m_axi_bready,
+    input  wire                               m_axi_bvalid,
+    output wire                               m_axi_bready,
 
     input  wire                                   ddr_ready,
 `endif // endif F1_BOARD
@@ -306,8 +306,8 @@ module system(
     output                                      uart_tx,
     input                                       uart_rx,
 `ifdef VCU118_BOARD
-		input                                       uart_cts,
-		output                                      uart_rts,
+    input                                       uart_cts,
+    output                                      uart_rts,
 `endif // VCU118_BOARD
 `endif // endif PITONSYS_UART
 
@@ -500,7 +500,7 @@ wire [2:0]          passthru_chipset_credit_back_p;
 wire [2:0]          passthru_chipset_credit_back_n;
 
 `ifdef PITONSYS_UART_BOOT
-wire                test_start;
+wire test_start;
 `endif
 `ifdef PITONSYS_UART_RESET
 wire                uart_rst_out_n;
@@ -621,7 +621,7 @@ assign passthru_pll_rst_n = 1'b1;
     assign tms_i   = 1'b0;
     assign trst_ni = 1'b0;
     assign td_i    = 1'b0;
-`endif
+`endif //PITON_FPGA_SYNTH
 
 // `ifdef VCU118_BOARD
 //     wire tck_i, tms_i, trst_ni, td_i, td_o;
@@ -664,7 +664,7 @@ assign passthru_pll_rst_n = 1'b1;
         .UPDATE(), // 1-bit output: UPDATE output from TAP controller
         .TDO(td_o) // 1-bit input: Test Data Output (TDO) input for USER function.
     );
-`endif
+`endif //VC707_BOARD
 `ifdef NEXYSVIDEO_BOARD
     wire tck_i, tms_i, trst_ni, td_i, td_o;
 
@@ -685,14 +685,15 @@ assign passthru_pll_rst_n = 1'b1;
         .UPDATE(), // 1-bit output: UPDATE output from TAP controller
         .TDO(td_o) // 1-bit input: Test Data Output (TDO) input for USER function.
     );
-`endif
-`endif
-
+`endif //NEXYSVIDEO_BOARD
+`endif //PITON_ARIANE
 
 
 //////////////////////////
 // Sub-module Instances //
 //////////////////////////
+
+wire [`COHORT_TILES-1:0]       page_fault_interrupt;
 
 // Piton chip
 chip chip(
@@ -707,7 +708,7 @@ chip chip(
     .impsel1 (chip_io_impsel[0]),
     .impsel2 (chip_io_impsel[1]),
 `endif // endif PITON_FPGA_SYNTH
-
+    .cohort_interrupt(page_fault_interrupt),
     // Clocks and resets
     .core_ref_clk(core_ref_clk),
     .io_clk(io_clk),
@@ -927,6 +928,7 @@ passthru passthru(
 chipset chipset(
     // Only need oscillator clock if
     // chipset is generating its own clocks
+.cohort_interrupt(page_fault_interrupt),
 `ifdef F1_BOARD
     .sys_clk(sys_clk),
 `else 
@@ -1063,6 +1065,7 @@ chipset chipset(
     .ddr_dq(ddr_dq),
     .ddr_dqs_n(ddr_dqs_n),
     .ddr_dqs_p(ddr_dqs_p),
+
 `ifndef NEXYSVIDEO_BOARD
     .ddr_cs_n(ddr_cs_n),
 `endif // endif NEXYSVIDEO_BOARD
@@ -1167,7 +1170,6 @@ chipset chipset(
         .net_phy_rst_n      (net_phy_rst_n),
         .net_phy_mdio_io    (net_phy_mdio_io),
         .net_phy_mdc        (net_phy_mdc),
-
     `endif // PITON_FPGA_ETHERNETLITE
 `endif // endif PITONSYS_IOCTRL
 

@@ -28,7 +28,7 @@
 # Not intended to be run standalone
 #
 
-set GLOBAL_INCLUDE_DIRS "${DV_ROOT}/design/include ${DV_ROOT}/design/chipset/include ${DV_ROOT}/design/chip/tile/ariane/common/submodules/common_cells/include ${DV_ROOT}/design/chip/tile/ariane/common/local/util ${DV_ROOT}/design/chip/tile/ariane/corev_apu/register_interface/include"
+set GLOBAL_INCLUDE_DIRS "${DV_ROOT}/design/include ${DV_ROOT}/design/chipset/include ${DV_ROOT}/design/chip/tile/ariane/common/submodules/common_cells/include ${DV_ROOT}/design/chip/tile/ariane/common/local/util ${DV_ROOT}/design/chip/tile/ariane/corev_apu/register_interface/include ${DV_ROOT}/design/chip/tile/cohort/include/common/ ${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/include"
 
 # RTL include files
 set GLOBAL_INCLUDE_FILES [list \
@@ -65,6 +65,12 @@ set SYSTEM_PRJ_IP_FILES [list \
 ]
 
 set CHIP_RTL_IMPL_FILES [list \
+    "${DV_ROOT}/design/common/rtl/noc_prio_merger.v" \
+    "${DV_ROOT}/design/common/rtl/noc_fbits_splitter.v" \
+    "${DV_ROOT}/design/common/rtl/noc_simple_merger.v" \
+    "${DV_ROOT}/design/common/rtl/noc_simple_splitter.v" \
+    "${DV_ROOT}/design/common/rtl/sram_chunk_data.v" \
+    "${DV_ROOT}/design/common/rtl/sync_fifo_vr.v" \
     "${DV_ROOT}/design/common/rtl/bram_sdp_wrapper.v" \
     "${DV_ROOT}/design/common/rtl/bram_1rw_wrapper.v" \
     "${DV_ROOT}/design/common/rtl/bram_1r1w_wrapper.v" \
@@ -541,6 +547,102 @@ set CHIP_RTL_IMPL_FILES [list \
     "${DV_ROOT}/design/chip/tile/ariane/common/submodules/common_cells/src/counter.sv" \
     "${DV_ROOT}/design/chip/tile/ariane/common/submodules/common_cells/src/delta_counter.sv" \
     "${DV_ROOT}/design/chip/tile/ariane/core/cvxif_fu.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/fifo_buffer.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/is_core.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/io_mmu.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/io_tlb.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/io_ptw.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_chunk_req.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_fifo_ctrl.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_noc1buffer.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_noc1decoder.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_noc1encoder.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_noc2buffer.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_noc2encoder.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_nocbuffer_dec.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_nocdecoder.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/dcp_pipe.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/store_mshr.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/chunk_req.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/rr_arbiter.v" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/maple.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/tight_acc_iface.sv" \
+    "${DV_ROOT}/design/chip/tile/maple/rtl/aes_top_buffered_wrapper.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/ShiftRows.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/MixColumns.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/Round.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/KeyExpantion.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/SubBytes.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/RoundKeyGen.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/AddRoundKey.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/SBox.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes/rtl/Top_PipelinedCipher.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/include/bsg_defines.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/include/sha256_pkg.sv" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_core.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_k_constants.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_w_mem.v" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/rtl/data_masker.sv" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/sha256_manager.sv" \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha/src/sha256_padder.sv" \
+    "${DV_ROOT}/design/chip/tile/cohort/include/common/cohort_inc.svh " \
+    "${DV_ROOT}/design/chip/tile/cohort/lib/priority_encoder.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/pmesh_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/config_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/perf_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/tri_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/dcp_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/coherency_ctrl_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/consumer_transaction_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/fifo_ctrl_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/fifo_config_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/producer_transaction_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/acc_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/atomic_resp_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/mem_req_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/tlb_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/perf_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/cohort_dbg_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/tri_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/backoff_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/coherency_configure_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/common/decoupled_v_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/common/decoupled_va_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/common/decoupled_vr_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/config_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/if/configuration_if.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/perf/generic_perf_counter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/adapters/cohort_serdes.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/acc_dummy.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha256_custom_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/load_unit/noc3_to_resp_adapter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/load_unit/fifo_mshr_hub.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/load_unit/req_to_noc2_adapter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/fifo_controller.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/store_unit/store_unit_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/req_arbiter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/adapters/producer_transaction_to_tri_adapter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/coherency_units/backoff_unit/backoff_unit.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/coherency_units/ro_coherency_manager.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/coherency_units/wo_coherency_manager.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/coherency_units/coherency_manager_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/cohort_impl.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/consumer_unit/consumer_load_transaction_generator.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/consumer_unit/consumer_unit_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/mshr_unit/mshr_consumer_unit_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/mshr_unit/mshr_tri_unit.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/producer_unit/producer_transaction_generator.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/producer_unit/producer_unit_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/uncached_configuration_unit.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/cohort.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/pkg/translator_pkg.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/translator_unit/pmesh_translator_unit.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/translator_unit/tlb_arbiter.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/translator_unit/translator_unit_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/translator_unit/tri_translator_unit.sv " \
 ]
 
 set CHIP_INCLUDE_FILES [list \

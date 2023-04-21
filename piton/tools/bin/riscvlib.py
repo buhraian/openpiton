@@ -17,6 +17,7 @@
 import pyhplib
 import os
 import subprocess
+from math import ceil, floor
 from pyhplib import *
 import time
 
@@ -82,7 +83,7 @@ const char info[] = {
        timeStamp,
        int(os.environ['PITON_X_TILES']),
        int(os.environ['PITON_Y_TILES']),
-       int(os.environ['PITON_NUM_TILES']),
+       ceil(int(os.environ['PITON_NUM_TILES'])/2),
        sysFreq,
        os.environ['PITON_NETWORK_CONFIG'],
        int(memLen/1024/1024),
@@ -121,7 +122,32 @@ def _reg_fmt(addrBase, addrLen, addrCells, sizeCells):
 
     return tmpStr
 
-def gen_riscv_dts(devices, nCpus, cpuFreq, timeBaseFreq, periphFreq, dtsPath, timeStamp):
+def base_reg_fmt(num_tiles):
+
+    tmpStr = " "
+
+    TILE_X = 28
+    TILE_Y = 24
+
+    PG_SIZE = 0x1000
+
+    BASE_DEV = 0xe1
+    BASE_MAPLE = 0x00800000
+    BASE_MMU   = 0x00A00000
+    BASE_DREAM = 0x00B00000
+
+    # These parameters and configurations are subject to change depending on the tile arch
+    WIDTH  = 2
+    for i in range(num_tiles):
+        tileno = i + 2
+        OFFSET = ((tileno%WIDTH) << TILE_X) | (int(tileno/WIDTH) << TILE_Y)
+        tmpStr += "0x%08x 0x%08x 0x%08x 0x%08x " % (BASE_DEV, BASE_MAPLE | OFFSET, 0, PG_SIZE)
+        tmpStr += "0x%08x 0x%08x 0x%08x 0x%08x " % (BASE_DEV, BASE_MMU   | OFFSET, 0, PG_SIZE)
+        tmpStr += "0x%08x 0x%08x 0x%08x 0x%08x " % (BASE_DEV, BASE_DREAM | OFFSET, 0, PG_SIZE)
+
+    return tmpStr
+
+def gen_riscv_dts(devices, nCpus, nCohorts, cpuFreq, timeBaseFreq, periphFreq, dtsPath, timeStamp):
 
     assert nCpus >= 1
 
@@ -199,7 +225,7 @@ def gen_riscv_dts(devices, nCpus, cpuFreq, timeBaseFreq, periphFreq, dtsPath, ti
 
     # TODO: this needs to be extended
     # get the number of interrupt sources
-    numIrqs = 0
+    numIrqs = 1
     devWithIrq = ["uart", "net"];
     for i in range(len(devices)):
         if devices[i]["name"] in devWithIrq:
@@ -303,6 +329,27 @@ def gen_riscv_dts(devices, nCpus, cpuFreq, timeBaseFreq, periphFreq, dtsPath, ti
         #     reg = <%s>;
         # };
 
+    addrBase = 0xe100A00000
+    addrLen  = 0x100000
+
+    tmpStr += '''
+cohort: cohort@%08x {
+    compatible = "ucsbarchlab,cohort-0.0.a";
+    reg = <%s>;
+    interrupt-parent = <&PLIC0>;
+    interrupts = <''' % (addrBase, base_reg_fmt(nCohorts)) 
+    for k in range(nCohorts):
+        if (k == nCohorts-1):
+            tmpStr += "%d" % (3 + k)
+        else:
+            tmpStr += "%d " % (3 + k)
+                
+    tmpStr += '''>;
+    ucsbarchlab,number-of-cohorts = <0x%d>;
+    };''' % (nCohorts)
+
+    ioDeviceNr+=1
+
     tmpStr += '''
     };
 };
@@ -323,8 +370,8 @@ def main():
         sysFreq = int(os.environ['CONFIG_SYS_FREQ'])
 
     timeStamp = time.strftime("%b %d %Y %H:%M:%S", time.localtime())
-    gen_riscv_dts(devices, PITON_NUM_TILES, sysFreq, sysFreq/128, sysFreq, os.environ['DV_ROOT']+"/design/chipset/rv64_platform/bootrom/", timeStamp)
-    get_bootrom_info(devices, PITON_NUM_TILES, sysFreq, sysFreq/128, sysFreq, os.environ['DV_ROOT']+"/design/chipset/rv64_platform/bootrom/", timeStamp)
+    gen_riscv_dts(devices, ceil(PITON_NUM_TILES/2), floor(PITON_NUM_TILES/2), sysFreq, sysFreq/128, sysFreq, os.environ['DV_ROOT']+"/design/chipset/rv64_platform/bootrom/", timeStamp)
+    get_bootrom_info(devices, ceil(PITON_NUM_TILES/2), sysFreq, sysFreq/128, sysFreq, os.environ['DV_ROOT']+"/design/chipset/rv64_platform/bootrom/", timeStamp)
 
 if __name__ == "__main__":
     main()

@@ -383,6 +383,18 @@ pico-amoxor     amoxor_w.S
     </cmp_default>
 </ariane_tile16>
 
+<cohort_tile2 sys=manycore -x_tiles=2 -y_tiles=1 -ariane -config_rtl=MINIMAL_MONITORING -decoupling -vcs_build_args="-full64 -debug_access+all -kdb -lca -LDFLAGS -rdynamic -P ${VERDI_HOME}/share/PLI/VCS/LINUX64/novas.tab ${VERDI_HOME}/share/PLI/VCS/LINUX64/pli.a">
+    <cmp_default name=default>
+        <ariane_tile16_simple>
+            <runargs -x_tiles=2 -y_tiles=1 -decoupling  dcp_coh.c -ariane -finish_mask=1 -gcc_args=-DBARE_METAL -vcs_build_args="-full64 -debug_access+all" -rtl_timeout 10000000>
+                cohort_baremetal_full      cohort_baremetal_full.c
+                cohort_double_allocation   cohort_double_allocation.c
+                cohort_multiple_allocations cohort_multiple_allocations.c
+            </runargs>
+        </ariane_tile16_simple>
+    </cmp_default>
+</cohort_tile2>
+
 
 
 <tile1 sys=manycore -x_tiles=1 -y_tiles=1>

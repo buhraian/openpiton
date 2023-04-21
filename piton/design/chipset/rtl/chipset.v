@@ -119,6 +119,7 @@ module chipset(
 `endif // endif PITON_CHIPSET_CLKS_GEN
 `endif // ifdef F1_BOARD
 
+    input [`COHORT_TILES-1:0]       cohort_interrupt,
 
 `ifdef PITON_BOARD
     input                                       pll_lock,
@@ -355,7 +356,7 @@ module chipset(
         inout                                           net_phy_mdio_io,
         output                                          net_phy_mdc,
 
-    `endif // PITON_FPGA_ETHERNETLITE    
+    `endif // PITON_FPGA_ETHERNETLITE
 `else // ifndef PITONSYS_IOCTRL
 
 `endif // endif PITONSYS_IOCTRL
@@ -1258,6 +1259,7 @@ chipset_impl_noc_power_test  chipset_impl (
     `endif // endif PITON_FPGA_MC_DDR3
     `endif // endif PITONSYS_NO_MC
 
+    .cohort_interrupt(cohort_interrupt),
     .chipset_intf_data_noc1(chipset_intf_data_noc1),
     .chipset_intf_data_noc2(chipset_intf_data_noc2),
     .chipset_intf_data_noc3(chipset_intf_data_noc3),
@@ -1418,7 +1420,7 @@ chipset_impl_noc_power_test  chipset_impl (
                 .net_phy_mdio_io    (net_phy_mdio_io        ),
                 .net_phy_mdc        (net_phy_mdc            )
 
-            `endif // PITON_FPGA_ETHERNETLITE   
+            `endif // PITON_FPGA_ETHERNETLITE
     `endif // endif PITONSYS_IOCTRL
 
     `ifdef PITON_RV64_PLATFORM

@@ -271,6 +271,13 @@ always @(posedge ok_iob) begin
 end
 `endif
 
+`ifdef COHORT_ACC_H264
+always @(chipset_clk) begin
+    cmp_top.system.chip.tile2.g_is_tile_core.is_core_inst.dcp.u_pipe.u_cohort.cohort_impl_inst.i_fifo_controller.i_acc_dummy.h264_top_i.clk_2x = chipset_clk;
+    cmp_top.system.chip.tile3.g_is_tile_core.is_core_inst.dcp.u_pipe.u_cohort.cohort_impl_inst.i_fifo_controller.i_acc_dummy.h264_top_i.clk_2x = chipset_clk;
+end
+`endif // ifdef COHORT_ACC_H264
+
 ////////////////////////////////////////////////////////
 // SYNTHESIZABLE SYSTEM
 // INCLUDES CHIP + CHIPSET (AND OPTIONAL PASSTHRU)
@@ -525,9 +532,11 @@ system system(
         .clk (jtag_clk)
         );
 
+    `ifndef PITONSYS_IOCTRL
     iob_mon iob_mon(
         .clk (chipset_clk)
     );
+    `endif
     // sas, more debug info
 
     // turn on sas interface after a delay

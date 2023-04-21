@@ -107,6 +107,11 @@ foreach impl_file $ALL_RTL_IMPL_FILES {
         set_property "used_in_implementation" "1" $file_obj
         set_property "used_in_simulation" "1" $file_obj
         set_property "used_in_synthesis" "1" $file_obj
+       
+        # Outside the if else tree from above	
+        if {[file extension $impl_file] == ".vhd"} { 
+          set_property "file_type" "VHDL" $file_obj
+        }
     }
 }
 foreach coe_file $ALL_COE_FILES {
@@ -364,6 +369,7 @@ set_property -name {steps.write_bitstream.args.more options} -value {} -objects 
 
 # set the current impl run
 current_run -implementation $fileset_obj
+
 
 puts "INFO: Project created:${PROJECT_NAME}"
 

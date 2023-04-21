@@ -94,7 +94,19 @@ if(!$test$plusargs("disable_dcp_mon")) begin
                 `DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.s2_req_rdy,`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.dcp_noc2buffer_rdy); 
         $display("***** %d *****",$time/1000);
     end
+
     `ifdef DCP_AES
+    if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.cr_acc_hsk)
+    begin
+        $display("AES being fed from LIMA: %x",`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.cr_pipe_data); 
+    end
+
+    if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.lima_acc_request)
+    begin
+        $display("AES pushed config: %x",`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.config_addr); 
+    end
+
+    
     // AES Debug Prints
     if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_aes_wrapper.aes_inputs_valid_reg)
     begin
@@ -103,12 +115,16 @@ if(!$test$plusargs("disable_dcp_mon")) begin
         $display("***** %d *****",$time/1000);
     end
 
-    if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_aes_wrapper.aes_ciphertext_valid)
+    if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_aes_wrapper.text_valid)
     begin
-        $display("AES output is valid: %x",`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_aes_wrapper.aes_ciphertext_data); 
+        $display("AES output is valid: %x",`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_aes_wrapper.text_data); 
         $display("***** %d *****",$time/1000);
     end
+
+
     `endif
+
+
 
     if (`DECADES_IS_TILE0.is_core_inst.dcp.u_pipe.u_maple.s1_val_sel)
     begin
@@ -316,7 +332,7 @@ if(!$test$plusargs("disable_dcp_mon")) begin
     `endif    
 
     '''
-    tt = ReplicatePattern(t, ["RTL_IS_TILE0","DECADES_IS_TILE0"]);
+    tt = ReplicatePatternH(t, ["RTL_IS_TILE0","DECADES_IS_TILE0"]);
     print(tt)
 %>
 

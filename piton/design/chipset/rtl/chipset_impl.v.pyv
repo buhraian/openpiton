@@ -101,6 +101,7 @@ module chipset_impl(
 `endif // endif PITONSYS_NO_MC
 
     // Main chip interface
+    input  [`COHORT_TILES-1:0]      cohort_interrupt,
     output [`NOC_DATA_WIDTH-1:0]                chipset_intf_data_noc1,
     output [`NOC_DATA_WIDTH-1:0]                chipset_intf_data_noc2,
     output [`NOC_DATA_WIDTH-1:0]                chipset_intf_data_noc3,
@@ -934,6 +935,7 @@ uart_top        uart_top (
     .uart_rx                    ( uart_rx                               ),
     .uart_tx                    ( uart_tx                               ),
     .uart_interrupt             ( uart_interrupt                        ),
+
 `ifdef PITONSYS_UART_LOOBACK
     // Can be used to loobpack UART for testing
     .uart_lb_sw                 ( 1'b1                                  ),
@@ -1112,16 +1114,16 @@ fake_uart fake_uart (
 
 `ifdef PITON_RV64_PLATFORM
 
-    wire [1:0] irq_sources, irq_le;
+    wire [`COHORT_TILES+1:0] irq_sources, irq_le;
     // 0:level 1:edge
     // Eth is edge, Uart is level
-    assign irq_le      = {1'b1, 1'b0};
-    assign irq_sources = {net_interrupt, uart_interrupt};
+    assign irq_le      = {{(`COHORT_TILES){1'b1}}, 1'b1, 1'b0};
+    assign irq_sources = {cohort_interrupt, net_interrupt, uart_interrupt};
 
     // this is for selecting the right bootrom (1: baremetal, 0: linux)
     wire ariane_boot_sel;
 `ifdef PITON_FPGA_SYNTH
-  assign ariane_boot_sel   = uart_boot_en;
+   assign ariane_boot_sel = uart_boot_en;
 `else
   `ifdef ARIANE_SIM_LINUX_BOOT
     assign ariane_boot_sel = 1'b0;
@@ -1147,8 +1149,8 @@ for i in range(len(devices)):
 str = '''
     riscv_peripherals #(
         .DataWidth      ( `NOC_DATA_WIDTH ),
-        .NumHarts       ( `PITON_NUM_TILES),
-        .NumSources     (               2 ),
+        .NumHarts       ( `PITON_NUM_TILES - 1),
+        .NumSources     ( `COHORT_TILES + 2 ),
         .SwapEndianess  (               1 ),
         .DmBase         ( 64'h%016x ),
         .RomBase        ( 64'h%016x ),

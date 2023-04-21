@@ -64,6 +64,10 @@ SECTIONS
     *(.tbss.end)
   }
 
+  . = ALIGN(4096);
+  __malloc_start = .;
+  . = . + 65536;
+
   /* End of uninitalized data segement */
   _end : {
     _end = .;

@@ -55,6 +55,8 @@ import pyhplib
 from pyhplib import *
 
 print("`define PITON_NUM_TILES %d" % PITON_NUM_TILES)
+print("`define COHORT_TILES %d" % COHORT_TILES)
+# print("`define PITON_RV64_TILES %d" % PITON_RV64_TILES)
 print("`define PITON_X_TILES %d"   % PITON_X_TILES)
 print("`define PITON_Y_TILES %d"   % PITON_Y_TILES)
 %>

@@ -50,15 +50,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 `define CR_CHUNK_IDX 4  // Default 4
 
 `define FC_GLOBL_IDX  `MSG_MSHRID_WIDTH-1
+`ifdef DCP_MIN_MAPLE
+`define DCP_PERF_COUNTERS 0 // Default 1
+`define DCP_CR      0       // Default 1
+`else
 `define DCP_PERF_COUNTERS 1 // Default 1
 `define DCP_CR      1       // Default 1
+`endif
+`define DCP_DREAM   1
 
 // Loop unit constants
 `define CR_ARRAY_IDX  32
 `define CR_CHUNK_SIZE 64*8
 
 // TLB source constants
-`define TLB_SRC_IDX 1
+`define TLB_SRC_IDX 2
 `define TLB_SRC_NUM 2**`TLB_SRC_IDX
 
 //Virtual mem constants
@@ -183,6 +189,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 `define DCP_LP_LLC_32  6'd52
 `define DCP_LP_LLC_64  6'd53
 `define DCP_LP_PREFETCH  6'd54
+`define DCP_LP_ACC  6'd55
 
 //`define DCP_SET_B_ALL  6'd56
 `define DCP_SET_B32_FIFO 6'd57

@@ -9,4 +9,5 @@ noc_prio_merger.v
 noc_fbits_splitter.v
 noc_simple_merger.v
 noc_simple_splitter.v
+sram_chunk_data.v
 sync_fifo_vr.v

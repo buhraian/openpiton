@@ -69,8 +69,8 @@ def makeStreamFile(fname_bram):
     print(strFromAddr(START_TRIGGER,ADDR_HEX_WIDTH), file=fout)
 
     blk_bit_width   = NOC_PAYLOAD_WIDTH
-    blk_hex_width   = blk_bit_width / 4
-    bytes_in_blk    = blk_bit_width / 8
+    blk_hex_width   = blk_bit_width // 4
+    bytes_in_blk    = blk_bit_width // 8
 
     block_pattern = re.compile('([0-9a-fA-F]{%d})' % blk_hex_width)
     for line in fin:

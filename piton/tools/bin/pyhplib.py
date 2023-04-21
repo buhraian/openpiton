@@ -39,6 +39,8 @@ PITON_Y_TILES = int(os.environ.get('PITON_Y_TILES', '-1'))
 #print "//y_tiles:", num_tiles
 
 PITON_NUM_TILES = int(os.environ.get('PITON_NUM_TILES', '-1'))
+COHORT_TILES = int(os.environ.get('COHORT_TILES', '-1'))
+
 #print "//num_tiles:", num_tiles
 
 PITON_NETWORK_CONFIG = (os.environ.get("PITON_NETWORK_CONFIG", "2dmesh_config"))
@@ -67,6 +69,8 @@ PITON_RV64_PLATFORM   = int(os.environ.get('PITON_RV64_PLATFORM', '0'))
 
 if PITON_ARIANE or PITON_PICO:
     NUM_THREADS = PITON_NUM_TILES
+elif DECADES_DECOUPLING:
+    NUM_THREADS = PITON_NUM_TILES - 1
 else:
     NUM_THREADS = 2 * PITON_NUM_TILES
 
@@ -175,6 +179,17 @@ def ReplicatePattern1(text, patterns):
   regex = " ([^\.:]+)1"
   newtext = ''
   for i in range(PITON_NUM_TILES):
+    t = text
+    for p in patterns:
+      replacement = p[:-1] + repr(i);
+      t = t.replace(p, replacement);
+    newtext += t + '\n';
+  return newtext;
+
+def ReplicatePatternH(text, patterns):
+  regex = " ([^\.:]+)0"
+  newtext = ''
+  for i in range(math.ceil(PITON_NUM_TILES/2)):
     t = text
     for p in patterns:
       replacement = p[:-1] + repr(i);
