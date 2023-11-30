@@ -2,6 +2,8 @@
 +incdir+include/common/
 +incdir+src/rtl/fifo_controller/acc_unit/sha/include/
 
++incdir+/home/brianli/beehive/cocotb_testing/udp_echo/test_udp_echo.flist
+
 include/common/cohort_inc.svh
 
 lib/priority_encoder.sv
@@ -34,6 +36,7 @@ src/if/cohort_dbg_if.sv
 
 src/rtl/adapters/cohort_serdes.sv
 src/rtl/fifo_controller/acc_unit/acc_dummy.sv
+src/rtl/fifo_controller/acc_unit/beehive_top.sv
 src/rtl/fifo_controller/acc_unit/sha256_custom_top.sv
 src/rtl/fifo_controller/acc_unit/aes_top.sv
 src/rtl/fifo_controller/load_unit/noc3_to_resp_adapter.sv
@@ -61,26 +64,26 @@ src/rtl/producer_unit/producer_unit_top.sv
 src/rtl/uncached_configuration_unit.sv
 src/rtl/perf/generic_perf_counter.sv
 
-src/rtl/fifo_controller/acc_unit/aes/rtl/AddRoundKey.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/KeyExpantion.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/MixColumns.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/Round.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/RoundKeyGen.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/SBox.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/ShiftRows.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/SubBytes.v
-src/rtl/fifo_controller/acc_unit/aes/rtl/Top_PipelinedCipher.v
-src/rtl/fifo_controller/acc_unit/aes/sim/Top_PipelinedCipher_tb.v
-
-src/rtl/fifo_controller/acc_unit/sha/include/bsg_defines.v
-src/rtl/fifo_controller/acc_unit/sha/include/sha256_pkg.sv
-src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256.v
-src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_core.v
-src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_k_constants.v
-src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_w_mem.v
-src/rtl/fifo_controller/acc_unit/sha/src/rtl/data_masker.sv
-src/rtl/fifo_controller/acc_unit/sha/src/sha256_manager.sv
-src/rtl/fifo_controller/acc_unit/sha/src/sha256_padder.sv
+//src/rtl/fifo_controller/acc_unit/aes/rtl/AddRoundKey.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/KeyExpantion.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/MixColumns.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/Round.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/RoundKeyGen.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/SBox.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/ShiftRows.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/SubBytes.v
+//src/rtl/fifo_controller/acc_unit/aes/rtl/Top_PipelinedCipher.v
+//src/rtl/fifo_controller/acc_unit/aes/sim/Top_PipelinedCipher_tb.v
+//
+//src/rtl/fifo_controller/acc_unit/sha/include/bsg_defines.v
+//src/rtl/fifo_controller/acc_unit/sha/include/sha256_pkg.sv
+//src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256.v
+//src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_core.v
+//src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_k_constants.v
+//src/rtl/fifo_controller/acc_unit/sha/src/rtl/sha256_w_mem.v
+//src/rtl/fifo_controller/acc_unit/sha/src/rtl/data_masker.sv
+//src/rtl/fifo_controller/acc_unit/sha/src/sha256_manager.sv
+//src/rtl/fifo_controller/acc_unit/sha/src/sha256_padder.sv
 
 
 src/rtl/cohort.sv

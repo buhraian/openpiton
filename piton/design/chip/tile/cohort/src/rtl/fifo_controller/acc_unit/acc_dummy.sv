@@ -48,6 +48,14 @@ module acc_dummy (
 		.consumer_data(consumer_data),
 		.producer_data(producer_data)
 	);
+`elsif COHORT_ACC_BEEHIVE
+	beehive_top i_beehive_top (
+		.clk          (clk          ),
+		.rst_n        (rst_n        ),
+		.acc_config   (acc_config   ),
+		.consumer_data(consumer_data),
+		.producer_data(producer_data)
+	);
  `elsif COHORT_ACC_SHA
 	sha256_custom_top sha256_custom_top_i (
 		.clk			( clk			),

@@ -617,6 +617,7 @@ set CHIP_RTL_IMPL_FILES [list \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/adapters/cohort_serdes.sv " \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/acc_dummy.sv " \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/aes_top.sv " \
+    "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/beehive_top.sv " \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/acc_unit/sha256_custom_top.sv " \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/load_unit/noc3_to_resp_adapter.sv " \
     "${DV_ROOT}/design/chip/tile/cohort/src/rtl/fifo_controller/load_unit/fifo_mshr_hub.sv " \
